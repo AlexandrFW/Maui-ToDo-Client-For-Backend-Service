@@ -1,12 +1,6 @@
-﻿using Android.OS;
-using MauiToDoClient.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using MauiToDoClient.Models;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Xamarin.Google.Crypto.Tink.Proto;
 
 namespace MauiToDoClient.DataServices
 {
@@ -17,10 +11,13 @@ namespace MauiToDoClient.DataServices
         private readonly string _url;
         private readonly JsonSerializerOptions _jsonSerializeOption;
 
-        public RestDataService()
+        public RestDataService(HttpClient httpClient)
         {
-            _httpClient = new HttpClient();
-            _baseAddress = DeviceInfo.Platform == DevicePlatform.Android ? "http://10.0.2.2:5209/" : "http://localhost:5109";
+            //System.Diagnostics.Debug.WriteLine($"---> DeviceInfo.Platform = { DeviceInfo.Platform.ToString() }..."); 
+
+            //_httpClient = new HttpClient();
+            _httpClient = httpClient;
+            _baseAddress = DeviceInfo.Platform == DevicePlatform.Android ? "http://192.168.1.2:5190" : "http://localhost:5109";
             _url = $"{_baseAddress}/api";
 
             _jsonSerializeOption = new JsonSerializerOptions
@@ -106,12 +103,20 @@ namespace MauiToDoClient.DataServices
 
                 if (responce.IsSuccessStatusCode)
                 {
+                    System.Diagnostics.Debug.WriteLine("---> Request is success...");
+
                     string context = await responce.Content.ReadAsStringAsync();
 
+                    if (string.IsNullOrEmpty(context))
+                        System.Diagnostics.Debug.WriteLine("---> Nothing has been loaded...");
+
                     todos = JsonSerializer.Deserialize<List<ToDo>>(context, _jsonSerializeOption);
+                    if (todos is not null)
+                        System.Diagnostics.Debug.WriteLine($"---> todos.Count = { todos.Count }...");
                 }
                 else
                 {
+                    System.Diagnostics.Debug.WriteLine("--->  GetAllToDosAsync() method...");
                     System.Diagnostics.Debug.WriteLine("---> Not http 2xx responce...");
                 }
             }
@@ -136,7 +141,7 @@ namespace MauiToDoClient.DataServices
                 string jsonToDo = JsonSerializer.Serialize<ToDo>(toDo, _jsonSerializeOption);
                 StringContent content = new StringContent(jsonToDo, Encoding.UTF8, "application/json");
 
-                HttpResponseMessage responce = await _httpClient.PutAsync($"{_url}/todo", content);
+                HttpResponseMessage responce = await _httpClient.PutAsync($"{_url}/todo/{toDo.Id}", content);
 
 
                 if (responce.IsSuccessStatusCode)
